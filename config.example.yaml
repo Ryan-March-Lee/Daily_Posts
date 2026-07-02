@@ -1,0 +1,60 @@
+# Daily IEEE Early Access 监控配置模板
+# 复制本文件为 config.yaml，然后填入你的真实凭据
+
+# 监控的期刊列表（可添加多个）
+journals:
+  - name: "IEEE Transactions on Microwave Theory and Techniques"
+    punumber: "22"
+    abbr: "TMTT"
+  - name: "IEEE Microwave and Wireless Technology Letters"
+    punumber: "9944983"
+    abbr: "MWTL"            # 期刊简称，用于推送显示；新增期刊时请填写简写
+  - name: "IEEE Transactions on Circuits and Systems I: Regular Papers"
+    punumber: "8919"
+    abbr: "TCAS I"
+  - name: "IEEE Transactions on Circuits and Systems II: Express Briefs"
+    punumber: "8920"
+    abbr: "TCAS II"
+
+# 关键词语料库（标题整词匹配，大小写不敏感，允许复数 s，任意命中即算匹配 OR 逻辑）
+# 匹配文章：全量推送（英文标题+中文标题+期刊+第一作者单位+链接+摘要），抓取详情页摘要
+# 非匹配文章：不推送
+keywords:
+  - "Amplifier"
+  - "Doherty"
+  - "MMIC"
+  - "PA"
+
+# 抓取设置
+scraping:
+  headless: true              # 调试时改为 false 可观察浏览器
+  channel: "msedge"           # 使用系统已装的浏览器，免下载专用 Chromium。可选 "msedge"/"chrome"，留空则用 Playwright 自带 Chromium
+  delay_seconds: 3            # 请求之间的随机延迟基数（秒）
+  page_timeout_ms: 60000      # 单页加载超时
+  max_articles: 50            # 单次最多处理文章数（防止异常爆量）
+
+# LLM 总结设置（OpenAI 兼容接口）
+llm:
+  provider: "deepseek"        # deepseek / qwen / zhipu / openai
+  base_url: "https://api.deepseek.com/v1"
+  api_key: "YOUR_API_KEY_HERE"
+  model: "deepseek-chat"
+  temperature: 0.3
+  max_tokens: 200
+  summary_lang: "中文"          # 总结输出语言
+  max_summary_chars: 100       # 单篇总结字数上限
+
+# 企业微信推送设置
+notifier:
+  type: "wecom_bot"
+  webhook: "YOUR_WEBHOOK_URL_HERE"
+  notify_when_empty: true      # 无新文章时是否推送提示
+
+# 状态去重
+state:
+  file: "data/seen_articles.json"
+
+# 日志
+logging:
+  level: "INFO"                # DEBUG / INFO / WARNING / ERROR
+  dir: "logs"
