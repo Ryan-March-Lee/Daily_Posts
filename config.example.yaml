@@ -16,14 +16,34 @@ journals:
     punumber: "8920"
     abbr: "TCAS II"
 
-# 关键词语料库（标题整词匹配，大小写不敏感，允许复数 s，任意命中即算匹配 OR 逻辑）
+# 研究方向（每个方向独立关键词 + 独立推送机器人；期刊共享）
 # 匹配文章：全量推送（英文标题+中文标题+期刊+第一作者单位+链接+摘要），抓取详情页摘要
 # 非匹配文章：不推送
-keywords:
-  - "Amplifier"
-  - "Doherty"
-  - "MMIC"
-  - "PA"
+# 一篇文章可命中多个方向，进入对应多个群
+directions:
+  - name: "有源电路"
+    keywords:
+      - "Amplifier"
+      - "Doherty"
+      - "MMIC"
+      - "PA"
+    notifier:
+      type: "wecom_bot"
+      webhook: "YOUR_WECOM_WEBHOOK_FOR_ACTIVE_CIRCUITS"
+      notify_when_empty: true      # 无新文章时是否推送提示
+  - name: "预失真"
+    keywords:
+      - "predistortion"
+      - "pre-distortion"
+      - "predistorter"
+      - "linearization"
+      - "linearisation"
+      - "linearizer"
+      - "DPD"
+    notifier:
+      type: "wecom_bot"
+      webhook: "YOUR_WECOM_WEBHOOK_FOR_PREDISTORTION"
+      notify_when_empty: true      # 无新文章时是否推送提示
 
 # 抓取设置
 scraping:
@@ -43,12 +63,6 @@ llm:
   max_tokens: 200
   summary_lang: "中文"          # 总结输出语言
   max_summary_chars: 100       # 单篇总结字数上限
-
-# 企业微信推送设置
-notifier:
-  type: "wecom_bot"
-  webhook: "YOUR_WEBHOOK_URL_HERE"
-  notify_when_empty: true      # 无新文章时是否推送提示
 
 # 状态去重
 state:
