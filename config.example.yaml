@@ -15,6 +15,12 @@ journals:
   - name: "IEEE Transactions on Circuits and Systems II: Express Briefs"
     punumber: "8920"
     abbr: "TCAS II"
+  - name: "IEEE Journal of Solid-State Circuits"
+    punumber: "4"
+    abbr: "JSSC"
+  - name: "IEEE Journal of Microwaves"
+    punumber: "9171629"
+    abbr: "J Microw"
 
 # 研究方向（每个方向独立关键词 + 独立推送机器人；期刊共享）
 # 匹配文章：全量推送（英文标题+中文标题+期刊+第一作者单位+链接+摘要），抓取详情页摘要
