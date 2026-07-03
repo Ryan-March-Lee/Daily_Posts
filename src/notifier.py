@@ -110,6 +110,32 @@ class WeComNotifier:
         messages = self._split_into_messages(header, matched_items, self._build_full_block)
         self._send_messages(messages)
 
+    def notify_empty_summary(self, empty_jnames, date_str=None):
+        """某方向下所有无匹配期刊的汇总提示（一条消息）。
+        受 notify_when_empty 开关控制。
+        """
+        if not empty_jnames:
+            return
+        if not self.notify_when_empty:
+            self.logger.info(
+                f"方向[{self.direction_name}] {len(empty_jnames)} 个期刊无匹配，跳过汇总推送"
+            )
+            return
+        date_str = date_str or datetime.now().strftime("%Y-%m-%d")
+        tag = f"[{self.direction_name}] " if self.direction_name else ""
+        msg = (
+            f"## {tag}Early Access 日报 {date_str}\n"
+            f"以下期刊无匹配:\n"
+            f"{'、'.join(empty_jnames)}"
+        )
+        try:
+            self._send_one(msg)
+            self.logger.info(
+                f"方向[{self.direction_name}] 无匹配期刊汇总已发送: {empty_jnames}"
+            )
+        except Exception as e:
+            self.logger.error(f"汇总提示发送失败: {e}")
+
     def notify_error(self, error_msg):
         date_str = datetime.now().strftime("%Y-%m-%d %H:%M")
         tag = f"[{self.direction_name}] " if self.direction_name else ""
