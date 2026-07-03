@@ -6,9 +6,15 @@ WECOM_BOT_LIMIT = 4096
 
 
 class WeComNotifier:
-    def __init__(self, config, logger):
+    def __init__(self, config, logger, direction=None):
         self.logger = logger
-        n = config.get("notifier", {})
+        # 多方向支持：notifier 配置内嵌在 direction 内；兼容旧式顶层 notifier
+        if direction is not None:
+            self.direction_name = direction.get("name", "")
+            n = direction.get("notifier", {})
+        else:
+            self.direction_name = ""
+            n = config.get("notifier", {})
         self.webhook = n.get("webhook", "")
         self.notify_when_empty = n.get("notify_when_empty", True)
         self.timeout = 15.0
@@ -78,12 +84,13 @@ class WeComNotifier:
         """
         date_str = datetime.now().strftime("%Y-%m-%d")
         jname = journal_name or (matched_items[0]["article"].get("journal", "") if matched_items else "")
+        tag = f"[{self.direction_name}] " if self.direction_name else ""
 
         # 情况 A：无匹配文章
         if not matched_items:
             if self.notify_when_empty:
                 msg = (
-                    f"## {jname} Early Access 日报 {date_str}\n"
+                    f"## {tag}{jname} Early Access 日报 {date_str}\n"
                     f"今日无与语料库匹配的论文"
                 )
                 try:
@@ -97,7 +104,7 @@ class WeComNotifier:
 
         # 情况 B：有匹配文章
         header = (
-            f"## {jname} Early Access 日报 {date_str}\n"
+            f"## {tag}{jname} Early Access 日报 {date_str}\n"
             f"★ 语料库匹配 {len(matched_items)} 篇"
         )
         messages = self._split_into_messages(header, matched_items, self._build_full_block)
@@ -105,8 +112,9 @@ class WeComNotifier:
 
     def notify_error(self, error_msg):
         date_str = datetime.now().strftime("%Y-%m-%d %H:%M")
+        tag = f"[{self.direction_name}] " if self.direction_name else ""
         msg = (
-            f"## IEEE Early Access 任务异常\n"
+            f"## {tag}IEEE Early Access 任务异常\n"
             f"时间: {date_str}\n"
             f"错误: {error_msg}"
         )
