@@ -7,7 +7,7 @@
 1. Playwright 驱动系统 Edge 打开期刊 Recent Issue 页 → 点击 Early Access 标签
 2. 提取每篇文章的标题 / 作者 / 摘要（从文章页 `xplGlobal.document.metadata`）
 3. 调用 DeepSeek 生成结构化中文总结（研究问题 / 方法 / 创新点 / 阅读建议+评分）
-4. 通过企业微信群机器人推送 Markdown 消息（超 4096 字节自动分条）
+4. 按研究方向拆分：一篇文章可命中多个方向，分别推送到对应企业微信群机器人（超 4096 字节自动分条）
 5. 本地 `data/seen_articles.json` 记录已推文章，仅推送新增
 
 ## 环境与依赖
@@ -41,10 +41,13 @@ C:\My_Document\Anaconda\envs\daily_posts\python.exe -m pip install -r requiremen
 配置项说明：
 
 - `journals`：监控的期刊列表（name + punumber）。添加新期刊只需追加条目
+- `directions`：研究方向列表，每个方向独立关键词 + 独立推送机器人（期刊共享）
+  - `name`：方向名称（显示在推送标题前缀，如 `[预失真]`）
+  - `keywords`：标题整词匹配关键词（大小写不敏感、允许复数 s、OR 逻辑）。一篇文章可命中多个方向，分别推送到对应群
+  - `notifier.webhook`：该方向对应的企业微信群机器人 webhook
+  - `notifier.notify_when_empty`：该方向无匹配文章时是否推送提示
 - `scraping.channel`：浏览器通道，`msedge` 用系统 Edge（免下载），可改 `chrome` 或留空
 - `llm`：LLM 配置（OpenAI 兼容接口）。切换 provider 只需改 base_url / api_key / model
-- `notifier.webhook`：企业微信群机器人 webhook
-- `notifier.notify_when_empty`：无新文章时是否推送提示
 
 > 注意：`config.yaml` 含 API key 与 webhook key，已被 `.gitignore` 忽略，**请勿手动取消忽略或提交到公开仓库**。
 
@@ -91,7 +94,7 @@ Daily_Posts/
 ├── src/
 │   ├── scraper.py           # Playwright 抓取（系统 Edge）
 │   ├── summarizer.py        # DeepSeek 总结
-│   ├── notifier.py          # 企业微信推送
+│   ├── notifier.py          # 企业微信推送（多方向，每方向独立机器人）
 │   ├── state.py             # 去重
 │   └── logger.py            # 日志
 ├── data/seen_articles.json  # 已推文章记录
@@ -115,6 +118,37 @@ journals:
 ```
 
 punumber 在期刊 IEEE Xplore 主页 URL 的 `punumber=` 参数中获取。
+
+## 如何添加 / 修改研究方向
+
+研究方向定义在 `config.yaml` 的 `directions` 下，每个方向独立关键词与推送机器人，期刊对所有方向共享。一篇文章可同时命中多个方向，会分别推送到对应群。
+
+新增一个方向（含独立机器人）只需追加条目：
+
+```yaml
+directions:
+  - name: "有源电路"
+    keywords:
+      - "Amplifier"
+      - "Doherty"
+      - "MMIC"
+      - "PA"
+    notifier:
+      type: "wecom_bot"
+      webhook: "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=YOUR_KEY"
+      notify_when_empty: true
+  # 新增方向示例：
+  - name: "天线"
+    keywords:
+      - "antenna"
+      - "MIMO"
+    notifier:
+      type: "wecom_bot"
+      webhook: "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=YOUR_OTHER_KEY"
+      notify_when_empty: true
+```
+
+> 抓取与 LLM 总结只执行一次（按所有方向关键词的并集判断是否抓取详情页摘要），随后按各方向关键词分别路由推送，避免重复抓取。
 
 ## 切换 LLM
 
