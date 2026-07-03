@@ -57,6 +57,10 @@ def main():
         scraper = IEEEScraper(config, logger)
         summarizer = Summarizer(config, logger)
 
+        # 收集阶段：每方向维护 有匹配期刊列表 与 无匹配期刊名列表
+        dir_matched = [[] for _ in directions]
+        dir_empty_jnames = [[] for _ in directions]
+
         for journal in config.get("journals", []):
             try:
                 matched, others = scraper.scrape_journal(
@@ -87,7 +91,7 @@ def main():
 
             jname = journal.get("abbr") or journal.get("name", "")
 
-            # 按方向分发：一篇文章可命中多个方向，进入对应多个群
+            # 按方向收集：一篇文章可命中多个方向，进入对应多个群
             for idx, kw_lower in enumerate(direction_keywords):
                 dir_items = [
                     {"article": a.to_dict(), "summary": s}
@@ -98,7 +102,17 @@ def main():
                 logger.info(
                     f"方向 [{dname}] 期刊 {journal['name']}: 命中 {len(dir_items)} 篇"
                 )
+                if dir_items:
+                    dir_matched[idx].append((jname, dir_items))
+                else:
+                    dir_empty_jnames[idx].append(jname)
+
+        # 分发阶段：有匹配期刊逐条推送，无匹配期刊合并为一条汇总
+        for idx, d in enumerate(directions):
+            for jname, dir_items in dir_matched[idx]:
                 notifiers[idx].notify(dir_items, journal_name=jname)
+            if dir_empty_jnames[idx]:
+                notifiers[idx].notify_empty_summary(dir_empty_jnames[idx])
 
         logger.info("任务完成")
     except Exception as e:
