@@ -1,6 +1,13 @@
 # Daily IEEE Early Access 监控配置模板
 # 复制本文件为 config.yaml，然后填入你的真实凭据
 
+# 调试与报错通道
+# enabled: true  = 调试模式，所有推送（匹配文章+无匹配汇总）都发到 debug 群，正式群不发
+# enabled: false = 正常模式，推送发各自正式群；但报错始终发到 debug 群
+debug:
+  enabled: false
+  webhook: "YOUR_DEBUG_WECOM_WEBHOOK"
+
 # 监控的期刊列表（可添加多个）
 journals:
   - name: "IEEE Transactions on Microwave Theory and Techniques"
