@@ -15,15 +15,22 @@ $settings = New-ScheduledTaskSettingsSet `
     -DontStopIfGoingOnBatteries `
     -StartWhenAvailable `
     -ExecutionTimeLimit (New-TimeSpan -Minutes 30)
+# 用 SYSTEM 账户运行，无需用户交互登录即可触发；
+# Edge 为系统级安装（Program Files），SYSTEM 可访问
+$principal = New-ScheduledTaskPrincipal `
+    -UserId "SYSTEM" `
+    -LogonType ServiceAccount `
+    -RunLevel Highest
 
 Register-ScheduledTask `
     -TaskName $taskName `
     -Action $action `
     -Trigger $trigger `
     -Settings $settings `
+    -Principal $principal `
     -Description "每日 08:00 抓取 IEEE Early Access 并推送中文总结到企业微信"
 
-Write-Host "定时任务已注册: $taskName (每日 08:00 执行)"
+Write-Host "定时任务已注册: $taskName (每日 08:00，以 SYSTEM 身份运行，无需登录)"
 Write-Host "启动脚本: $batPath"
 Write-Host ""
 Write-Host "管理命令:"
