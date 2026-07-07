@@ -3,7 +3,7 @@ import re
 import time
 from dataclasses import dataclass, field
 
-from playwright.sync_api import sync_playwright, TimeoutError as PWTimeoutError
+from playwright.sync_api import sync_playwright, TimeoutError as PWTimeoutError, Error as PWError
 
 
 @dataclass
@@ -43,6 +43,28 @@ class IEEEScraper:
 
     def _human_delay(self):
         time.sleep(self.delay + random.uniform(0, 1.5))
+
+    def _goto_with_retry(self, page, url, wait_until="domcontentloaded", retries=3):
+        """带重试的 page.goto，覆盖网络超时与连接重置。
+
+        Playwright 的 TimeoutError（ERR_TIMED_OUT）与 Error（ERR_CONNECTION_RESET 等）
+        均视为可重试。指数退避：4/8/16 秒。
+        """
+        last_exc = None
+        for attempt in range(1, retries + 1):
+            try:
+                page.goto(url, wait_until=wait_until)
+                return
+            except (PWTimeoutError, PWError) as e:
+                last_exc = e
+                self.logger.warning(
+                    f"页面加载失败（第 {attempt}/{retries} 次）: {url} -> {e.__class__.__name__}"
+                )
+                if attempt < retries:
+                    wait = 2 ** (attempt + 1)  # 4, 8, 16
+                    self.logger.info(f"等待 {wait}s 后重试...")
+                    time.sleep(wait)
+        raise last_exc
 
     def scrape_journal(self, journal, keywords=None, is_new_fn=None):
         """抓取期刊 Early Access 文章列表，按关键词分组。
@@ -130,7 +152,7 @@ class IEEEScraper:
         """从 Early Access 列表页提取文章（含标题），返回 List[Article]。"""
         recent_url = f"{self.BASE}/xpl/RecentIssue.jsp?punumber={puno}"
         self.logger.info(f"加载期刊主页: {recent_url}")
-        page.goto(recent_url, wait_until="domcontentloaded")
+        self._goto_with_retry(page, recent_url)
 
         try:
             page.wait_for_selector("xpl-issue-list, .issue-tabs, xpl-root", timeout=20000)
@@ -215,7 +237,7 @@ class IEEEScraper:
         """打开文章详情页，返回 metadata dict 或 None。"""
         url = f"{self.BASE}/document/{article_number}"
         try:
-            page.goto(url, wait_until="domcontentloaded")
+            self._goto_with_retry(page, url)
             try:
                 page.wait_for_load_state("networkidle", timeout=15000)
             except PWTimeoutError:
