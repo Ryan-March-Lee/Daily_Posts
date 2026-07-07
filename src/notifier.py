@@ -149,6 +149,9 @@ class WeComNotifier:
     def notify_error(self, error_msg):
         date_str = datetime.now().strftime("%Y-%m-%d %H:%M")
         tag = f"[{self.direction_name}] " if self.direction_name else ""
+        # 截断超长报错（如 Edge 启动参数），避免超过企微 4096 字节限制
+        if len(error_msg) > 1500:
+            error_msg = error_msg[:1500] + "\n...(已截断)"
         msg = (
             f"## {tag}IEEE Early Access 任务异常\n"
             f"时间: {date_str}\n"
