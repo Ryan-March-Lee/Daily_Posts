@@ -8,6 +8,11 @@ WECOM_BOT_LIMIT = 4096
 class WeComNotifier:
     def __init__(self, config, logger, direction=None):
         self.logger = logger
+        # 全局调试通道：debug 模式下所有推送改发 debug 群；报错始终发 debug 群
+        debug_cfg = config.get("debug", {}) or {}
+        self.debug_enabled = debug_cfg.get("enabled", False)
+        self.debug_webhook = debug_cfg.get("webhook", "")
+
         # 多方向支持：notifier 配置内嵌在 direction 内；兼容旧式顶层 notifier
         if direction is not None:
             self.direction_name = direction.get("name", "")
@@ -15,16 +20,21 @@ class WeComNotifier:
         else:
             self.direction_name = ""
             n = config.get("notifier", {})
-        self.webhook = n.get("webhook", "")
+        prod_webhook = n.get("webhook", "")
+        # debug 模式：正常推送也走 debug 群；否则走正式群
+        self.webhook = self.debug_webhook if (self.debug_enabled and self.debug_webhook) else prod_webhook
+        # 报错通道：始终用 debug 群（若配置），否则退回正式 webhook
+        self.error_webhook = self.debug_webhook or self.webhook
         self.notify_when_empty = n.get("notify_when_empty", True)
         self.timeout = 15.0
         if not self.webhook:
             raise ValueError("企业微信 webhook 未配置")
 
-    def _send_one(self, content):
+    def _send_one(self, content, webhook=None):
+        webhook = webhook or self.webhook
         payload = {"msgtype": "markdown", "markdown": {"content": content}}
         with httpx.Client(timeout=self.timeout) as client:
-            resp = client.post(self.webhook, json=payload)
+            resp = client.post(webhook, json=payload)
             resp.raise_for_status()
             data = resp.json()
             if data.get("errcode") != 0:
@@ -145,6 +155,6 @@ class WeComNotifier:
             f"错误: {error_msg}"
         )
         try:
-            self._send_one(msg)
+            self._send_one(msg, webhook=self.error_webhook)
         except Exception as e:
             self.logger.error(f"异常通知发送失败: {e}")
