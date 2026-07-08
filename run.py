@@ -1,6 +1,7 @@
 import os
 import sys
 import traceback
+from datetime import datetime
 
 import yaml
 
@@ -26,6 +27,21 @@ def main():
     logger = setup_logger(config)
     logger.info("=" * 50)
     logger.info("IEEE Early Access 日报任务启动")
+
+    # 今日已运行检查（debug 模式跳过，允许反复测试）
+    debug_cfg = config.get("debug", {}) or {}
+    if not debug_cfg.get("enabled", False):
+        marker = os.path.join(base_dir, "data", "last_run_date.txt")
+        today_str = datetime.now().strftime("%Y-%m-%d")
+        if os.path.exists(marker):
+            with open(marker, "r", encoding="utf-8") as f:
+                if f.read().strip() == today_str:
+                    logger.info(f"今日({today_str})已运行过，跳过。如需重跑请删除 {marker}")
+                    return
+        os.makedirs(os.path.dirname(marker), exist_ok=True)
+        with open(marker, "w", encoding="utf-8") as f:
+            f.write(today_str)
+        logger.info(f"已标记今日运行: {today_str}")
 
     try:
         directions = config.get("directions", [])
