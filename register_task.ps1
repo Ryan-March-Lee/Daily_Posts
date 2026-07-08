@@ -9,11 +9,8 @@ if ($existing) {
 }
 
 $action = New-ScheduledTaskAction -Execute $batPath -WorkingDirectory $workDir
-# 触发器：每日 08:00 + 开机后 5 分钟（防止 08:00 错过时开机补跑）
-$triggerDaily = New-ScheduledTaskTrigger -Daily -At 8:00AM
-$triggerBoot = New-ScheduledTaskTrigger -AtStartup
-$triggerBoot.Delay = "PT5M"
-$triggers = @($triggerDaily, $triggerBoot)
+# 触发器：每日 08:00（错过则由 StartWhenAvailable 开机补跑，无需单独的开机触发器）
+$trigger = New-ScheduledTaskTrigger -Daily -At 8:00AM
 $settings = New-ScheduledTaskSettingsSet `
     -AllowStartIfOnBatteries `
     -DontStopIfGoingOnBatteries `
@@ -32,7 +29,7 @@ $plainPwd = [System.Net.NetworkCredential]::new("", $securePwd).Password
 Register-ScheduledTask `
     -TaskName $taskName `
     -Action $action `
-    -Trigger $triggers `
+    -Trigger $trigger `
     -Settings $settings `
     -User $userId `
     -Password $plainPwd `
@@ -40,6 +37,6 @@ Register-ScheduledTask `
 
 Write-Host ""
 Write-Host "定时任务已注册: $taskName"
-Write-Host "  - 每日 08:00 触发（错过则开机后补跑）"
+Write-Host "  - 每日 08:00 触发（错过则由 StartWhenAvailable 开机补跑）"
 Write-Host "  - 以 $userId 身份运行（带密码登录，无需活跃桌面会话）"
 Write-Host "  - 启动脚本: $batPath"
