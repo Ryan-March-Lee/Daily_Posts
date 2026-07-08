@@ -83,11 +83,11 @@ def main():
             for a in matched:
                 summary = summarizer.summarize(a)
                 summarized.append((a, summary))
-                state.mark_seen(a.article_number)
+                state.mark_seen(a.article_number, journal=a.journal, title=a.title, matched=True)
 
             # 非匹配文章：仅标记已见，不推送
             for a in others:
-                state.mark_seen(a.article_number)
+                state.mark_seen(a.article_number, journal=a.journal, title=a.title, matched=False)
 
             jname = journal.get("abbr") or journal.get("name", "")
 
