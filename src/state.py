@@ -39,9 +39,14 @@ class StateManager:
         seen = self.data.get("seen", {})
         return article_id not in seen
 
-    def mark_seen(self, article_id):
+    def mark_seen(self, article_id, journal="", title="", matched=False):
         today = datetime.now().strftime("%Y-%m-%d")
-        self.data.setdefault("seen", {})[article_id] = today
+        self.data.setdefault("seen", {})[article_id] = {
+            "date": today,
+            "journal": journal,
+            "title": title,
+            "matched": matched,
+        }
         self._save()
 
     def mark_seen_batch(self, article_ids):
