@@ -66,6 +66,17 @@ C:\My_Document\Anaconda\envs\daily_posts\python.exe run.py
 .\register_task.ps1
 ```
 
+注册后任务具备两个保障机制，确保到点准时推送而非等到手动唤醒屏幕：
+
+- **`WakeToRun`**：到点主动唤醒系统（覆盖笔记本 S0 Modern Standby 低功耗空闲状态，此时屏幕关闭、CPU 进入 DRIPS，普通任务会被挂起）
+- **`StartWhenAvailable`**：唤醒失败或系统当时关机时，下次可用时自动补跑
+
+> 笔记本 Modern Standby 对 `WakeToRun` 的支持依机型/固件而异。为稳妥起见，**插电过夜**时建议将 AC 电源的睡眠超时设为「从不」（屏幕仍会自动关闭，不影响省电）：
+> ```powershell
+> powercfg /change standby-timeout-ac 0   # 仅影响插电状态，电池模式仍会正常睡眠
+> ```
+> 这样系统保持清醒、Task Scheduler 必然准时触发，`WakeToRun` 则作为「系统因故睡了」的兜底。两者叠加即可保证 08:00 准点推送。
+
 管理命令：
 
 ```powershell
