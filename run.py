@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 import traceback
 from datetime import datetime
 
@@ -77,17 +78,41 @@ def main():
         dir_matched = [[] for _ in directions]
         dir_empty_jnames = [[] for _ in directions]
 
+        # 单期刊整体重试：覆盖 goto + 标签点击 + 列表提取 + 详情页全流程
+        # 每次重试均由 scrape_journal 内部 with sync_playwright() 启动全新浏览器
+        RETRY_ATTEMPTS = 5
+        RETRY_BACKOFFS = [30, 60, 120, 240, 300]  # 秒，首次失败后依次等待
+
         for journal in config.get("journals", []):
-            try:
-                matched, others = scraper.scrape_journal(
-                    journal,
-                    keywords=union_keywords,
-                    is_new_fn=state.is_new,
+            matched, others = None, None
+            last_error = None
+            for attempt in range(1, RETRY_ATTEMPTS + 1):
+                try:
+                    matched, others = scraper.scrape_journal(
+                        journal,
+                        keywords=union_keywords,
+                        is_new_fn=state.is_new,
+                    )
+                    break  # 成功则跳出重试循环
+                except Exception as e:
+                    last_error = e
+                    logger.error(
+                        f"抓取期刊 {journal['name']} 失败（第 {attempt}/{RETRY_ATTEMPTS} 次）: {e}"
+                    )
+                    if attempt < RETRY_ATTEMPTS:
+                        wait = RETRY_BACKOFFS[attempt - 1]
+                        logger.info(f"等待 {wait}s 后重试 {journal['name']}...")
+                        time.sleep(wait)
+
+            # 全部重试耗尽仍失败：发 bug 群通知并跳过该期刊
+            if matched is None:
+                logger.error(
+                    f"抓取期刊 {journal['name']} 在 {RETRY_ATTEMPTS} 次重试后仍失败: {last_error}"
                 )
-            except Exception as e:
-                logger.error(f"抓取期刊 {journal['name']} 失败: {e}")
                 for nt in notifiers:
-                    nt.notify_error(f"抓取 {journal['name']} 失败: {e}")
+                    nt.notify_error(
+                        f"抓取 {journal['name']} 失败（已重试 {RETRY_ATTEMPTS} 次）: {last_error}"
+                    )
                 continue
 
             logger.info(
